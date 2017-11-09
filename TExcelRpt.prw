@@ -17,7 +17,8 @@
 	exportara pro Excel*/
 	METHOD Execute()
 	METHOD ToExcel(cQuery)
-	METHOD ExcelQuery(cUmAlias,cQuery)	
+	METHOD ExcelQuery(cUmAlias,cQuery)
+	METHOD GetDeAte(dDtDe, dDtAte, cCampo)	
 	/*Os metodos FixSX1 e GetQuery devem ser sobrescritos pelas classes filhas*/
 	METHOD FixSX1()
 	METHOD GetQuery()
@@ -85,6 +86,7 @@ Method ExcelQuery(cUmAlias,cQuery) CLASS TExcelRpt
 	Local nPos := 0
 	Local cTipo := ''
 	Local nLen := 0
+	Local aSm0	:= {}
 	
 	cQuery	:= ChangeQuery(cQuery)				
 	DbUseArea(.T., "TOPCONN", TCGenQry(,,cQuery), cUmAlias, .T., .F.)
@@ -100,11 +102,25 @@ Method ExcelQuery(cUmAlias,cQuery) CLASS TExcelRpt
 			endIf
 			cPict := AllTrim(SX3->X3_CBOX)
 			if(Empty(cPict))
-				cPict := SX3->X3_PICTURE
+				if('_FILIAL' $ AllTrim(aStruct[nI,1]))
+					if(Len(aSm0) <= 0)
+						cPict := {}
+						aSm0 := FWLoadSm0()
+						for nJ:= 1 to Len(aSm0)
+							aAdd(cPict,{AllTrim(aSm0[nJ,7]),aSm0[nJ,2],AllTrim(aSm0[nJ,2]) + ' - ' + AllTrim(aSm0[nJ,7])})
+						next nJ
+						aSm0 := aClone(cPict)
+					endIf
+					cPict := aSm0
+				else				
+					cPict := SX3->X3_PICTURE
+				endIf
 			else
 				cPict := RetSx3Box(X3CBox(),,, 1)	
 			endIf
 			aAdd(aCab,{aStruct[nI,1],"C", SX3->X3_TAMANHO,SX3->X3_DECIMAL,SX3->X3_TITULO,cPict})
+		else
+			aAdd(aCab,{aStruct[nI,1],"C", aStruct[nI,3],aStruct[nI,4],aStruct[nI,1],""})
 		endIf		
 	next nI
 	
@@ -163,3 +179,19 @@ Method ExcelQuery(cUmAlias,cQuery) CLASS TExcelRpt
 	aAdd(aResult,aDados)
 				 
 Return aResult
+
+METHOD GetDeAte(dDtDe, dDtAte, cCampo) CLASS TExcelRpt
+	Local cDataDeAte := '' 
+	
+	if!(Empty(dDtDe) .Or. Empty(dDtAte))		
+		cDataDeAte:= "("+ cCampo +" BETWEEN '"+ DtoS(dDtDe) +"' AND '"+ DtoS(dDtAte) +"')"
+	else
+		if(!Empty(dDtDe) .and. Empty(dDtAte))
+			cDataDeAte:= "("+ cCampo +" >= '"+ DtoS(dDtDe) +"')"
+		elseIf(!Empty(dDtAte) .and. Empty(dDtDe))
+			cDataDeAte:= "("+ cCampo +" <= '"+ DtoS(dDtAte) +"')"
+		else
+			cDataDeAte:= "("+ cCampo +" >= '20000101')"
+		endIf
+	endIf
+Return cDataDeAte
